@@ -18,21 +18,20 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   final _hashtags = TextEditingController();
 
   String level = 'Beginner';
-  String stream = 'SSC';
+  String? stream;
 
   bool loading = false;
 
   final levels = ['Beginner', 'Medium', 'Hard'];
   final streams = [
-    'SSC',
+    'Class 9-10th',
+    'Class 11-12th',
     'JEE',
     'NEET',
-    'IIT',
-    'UPSC',
-    'School',
+    'CUET',
     'College',
-    'Programming',
-    'Other',
+    'GATE',
+    'SSC',
   ];
 
   Future<void> saveCourse() async {
@@ -46,7 +45,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         'subtitle': _subtitle.text.trim(),
         'content': _content.text.trim(),
         'level': level,
-        'stream': stream,
+        'stream': stream!,
         'keywords': _keywords.text
             .split(',')
             .map((e) => e.trim().toLowerCase())
@@ -98,21 +97,29 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 label: 'Stream',
                 value: stream,
                 items: streams,
-                onChanged: (v) => setState(() => stream = v!),
+                onChanged: (v) => setState(() => stream = v),
+                required: true,
               ),
 
-              _field(_content, 'Course Content / Description', maxLines: 5),
+              _field(
+                _content,
+                'Course Content / Description',
+                maxLines: 5,
+                textCapitalization: TextCapitalization.sentences,
+              ),
 
               _field(
                 _keywords,
                 'Keywords (comma separated)',
                 hint: 'flutter, ui, exam',
+                textCapitalization: TextCapitalization.none,
               ),
 
               _field(
                 _hashtags,
                 'Hashtags',
                 hint: '#flutter #ssc #neet',
+                textCapitalization: TextCapitalization.none,
               ),
 
               const SizedBox(height: 24),
@@ -138,12 +145,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     String label, {
     int maxLines = 1,
     String? hint,
+    TextCapitalization textCapitalization = TextCapitalization.words,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: controller,
-        textCapitalization: TextCapitalization.sentences,
+        textCapitalization: textCapitalization,
         maxLines: maxLines,
         validator: (v) => v == null || v.isEmpty ? 'Required field' : null,
         decoration: InputDecoration(
@@ -157,18 +165,23 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   Widget _dropdown({
     required String label,
-    required String value,
+    required String? value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
+    bool required = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: DropdownButtonFormField<String>(
         value: value,
+        hint: Text('Select $label'),
         items: items
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
         onChanged: onChanged,
+        validator: required
+            ? (v) => v == null || v.isEmpty ? 'Please select $label' : null
+            : null,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
