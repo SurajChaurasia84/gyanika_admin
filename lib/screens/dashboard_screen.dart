@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'add_courses.dart';
 import 'create_sets.dart';
@@ -11,115 +12,135 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final email = FirebaseAuth.instance.currentUser?.email ?? '';
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: [
-            _DashboardTile(
-              title: 'Add Courses',
-              icon: Iconsax.book,
-              color: Colors.indigo,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 250),
-                    pageBuilder: (_, _, _) =>
-                        const AddCourseScreen(),
-                    transitionsBuilder: (_, animation, _, child) {
-                      return FadeTransition(
-                        opacity: CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeInOut,
-                        ),
-                        child: child,
-                      );
-                    },
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                    _DashboardTile(
+                      title: 'Add Courses',
+                      icon: Iconsax.book,
+                      color: Colors.indigo,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            transitionDuration: const Duration(milliseconds: 250),
+                            pageBuilder: (_, _, _) =>
+                                const AddCourseScreen(),
+                            transitionsBuilder: (_, animation, _, child) {
+                              return FadeTransition(
+                                opacity: CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeInOut,
+                                ),
+                                child: child,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    _DashboardTile(
+                      title: 'Create Sets',
+                      icon: Iconsax.layer,
+                      color: Colors.green,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            transitionDuration: const Duration(milliseconds: 250),
+                            pageBuilder: (_, _, _) =>
+                                const CreateSetsScreen(),
+                            transitionsBuilder: (_, animation, _, child) {
+                              return FadeTransition(
+                                opacity: CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeInOut,
+                                ),
+                                child: child,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    _DashboardTile(
+                      title: 'Activity',
+                      icon: Iconsax.chart,
+                      color: Colors.orange,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            transitionDuration: const Duration(milliseconds: 250),
+                            pageBuilder: (_, _, _) =>
+                                const ActivityScreen(),
+                            transitionsBuilder: (_, animation, _, child) {
+                              return FadeTransition(
+                                opacity: CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeInOut,
+                                ),
+                                child: child,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    _DashboardTile(
+                      title: 'My Profile',
+                      icon: Iconsax.user,
+                      color: Colors.grey,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            transitionDuration: const Duration(milliseconds: 250),
+                            pageBuilder: (_, _, _) =>
+                                const ProfileScreen(),
+                            transitionsBuilder: (_, animation, _, child) {
+                              return FadeTransition(
+                                opacity: CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeInOut,
+                                ),
+                                child: child,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  email,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 13,
                   ),
-                );
-              },
-            ),
-            _DashboardTile(
-              title: 'Create Sets',
-              icon: Iconsax.layer,
-              color: Colors.green,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 250),
-                    pageBuilder: (_, _, _) =>
-                        const CreateSetsScreen(),
-                    transitionsBuilder: (_, animation, _, child) {
-                      return FadeTransition(
-                        opacity: CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeInOut,
-                        ),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            _DashboardTile(
-              title: 'Activity',
-              icon: Iconsax.chart,
-              color: Colors.orange,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 250),
-                    pageBuilder: (_, _, _) =>
-                        const ActivityScreen(),
-                    transitionsBuilder: (_, animation, _, child) {
-                      return FadeTransition(
-                        opacity: CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeInOut,
-                        ),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            _DashboardTile(
-              title: 'My Profile',
-              icon: Iconsax.user,
-              color: Colors.grey,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 250),
-                    pageBuilder: (_, _, _) =>
-                        const ProfileScreen(),
-                    transitionsBuilder: (_, animation, _, child) {
-                      return FadeTransition(
-                        opacity: CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeInOut,
-                        ),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
