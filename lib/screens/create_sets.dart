@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../services/local_cache_service.dart';
+
 class CreateSetsScreen extends StatefulWidget {
   const CreateSetsScreen({super.key});
 
@@ -11,6 +13,8 @@ class CreateSetsScreen extends StatefulWidget {
 }
 
 class _CreateSetsScreenState extends State<CreateSetsScreen> {
+  static const String _subjectCountsCacheKey = 'subject_counts_v1';
+
   final Map<String, List<String>> _streams = {
     'Class 9-10th': [
       'Hindi',
@@ -56,6 +60,8 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
   final TextEditingController _explanationCtrl = TextEditingController();
 
   final List<Map<String, dynamic>> _questions = [];
+  final Map<String, Future<Map<String, int>>> _subjectCountsFutures = {};
+  final Map<String, Map<String, int>> _subjectCountsLocal = {};
 
   bool _saving = false;
   bool _keepScreenOn = false;
@@ -71,6 +77,12 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
   static const int _minQuestions = 4;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSubjectCountsFromCache();
+  }
+
+  @override
   void dispose() {
     _chapterEnCtrl.dispose();
     _chapterHiCtrl.dispose();
@@ -84,9 +96,63 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
     super.dispose();
   }
 
+  void _loadSubjectCountsFromCache() {
+    final raw = LocalCacheService.getJsonMap(_subjectCountsCacheKey);
+    if (raw == null || raw.isEmpty) return;
+
+    raw.forEach((key, value) {
+      if (value is Map) {
+        _subjectCountsLocal[key] = {
+          'setCount': _toInt(value['setCount']),
+          'questionCount': _toInt(value['questionCount']),
+        };
+      }
+    });
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _persistSubjectCountsToCache() async {
+    final payload = <String, Map<String, int>>{};
+    _subjectCountsLocal.forEach((key, value) {
+      payload[key] = {
+        'setCount': value['setCount'] ?? 0,
+        'questionCount': value['questionCount'] ?? 0,
+      };
+    });
+    await LocalCacheService.saveJson(_subjectCountsCacheKey, payload);
+  }
+
+  void _setSubjectCountsLocal(String docId, int setCount, int questionCount) {
+    final normalized = {
+      'setCount': setCount < 0 ? 0 : setCount,
+      'questionCount': questionCount < 0 ? 0 : questionCount,
+    };
+    _subjectCountsLocal[docId] = normalized;
+    _subjectCountsFutures[docId] = Future.value(normalized);
+    _persistSubjectCountsToCache();
+  }
+
+  int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
   Future<void> _toggleKeepScreenOn(bool value) async {
     setState(() => _keepScreenOn = value);
     await WakelockPlus.toggle(enable: value);
+  }
+
+  Future<bool> _handleBackNavigation() async {
+    if (_step > 0) {
+      setState(() => _step = _step - 1);
+      return false;
+    }
+    return true;
   }
 
   void _selectCard({
@@ -283,9 +349,23 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
           'createdAt': nowTs,
         });
       }
-      batch.set(chapterRef, {'updatedAt': nowTs}, SetOptions(merge: true));
-      batch.set(_cardRef(), {'updatedAt': nowTs}, SetOptions(merge: true));
+      batch.set(chapterRef, {
+        'updatedAt': nowTs,
+        'setCount': FieldValue.increment(1),
+        'questionCount': FieldValue.increment(_questions.length),
+      }, SetOptions(merge: true));
+      batch.set(_cardRef(), {
+        'updatedAt': nowTs,
+        'setCount': FieldValue.increment(1),
+        'questionCount': FieldValue.increment(_questions.length),
+      }, SetOptions(merge: true));
       await batch.commit();
+      final docId = _cardDocId(stream, subject);
+      final existing = _subjectCountsLocal[docId];
+      final nextSetCount = (existing?['setCount'] ?? 0) + 1;
+      final nextQuestionCount =
+          (existing?['questionCount'] ?? 0) + _questions.length;
+      _setSubjectCountsLocal(docId, nextSetCount, nextQuestionCount);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -307,28 +387,42 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Sets'),
-        actions: [
-          Row(
-            children: [
-              const Text('Keep on', style: TextStyle(fontSize: 12)),
-              Switch(
-                value: _keepScreenOn,
-                onChanged: _toggleKeepScreenOn,
-              ),
-            ],
+    return WillPopScope(
+      onWillPop: _handleBackNavigation,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          title: const Text('Create Sets'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () async {
+              final canPop = await _handleBackNavigation();
+              if (canPop && mounted) {
+                Navigator.pop(context);
+              }
+            },
           ),
-          const SizedBox(width: 6),
-        ],
-      ),
-      body: SafeArea(
-        child: _step == 0
-            ? _buildSubjectCards()
-            : _step == 1
-            ? _buildChapterStep()
-            : _buildQuestionStep(),
+          actions: [
+            Row(
+              children: [
+                const Text('Keep on', style: TextStyle(fontSize: 12)),
+                Switch(
+                  value: _keepScreenOn,
+                  onChanged: _toggleKeepScreenOn,
+                ),
+              ],
+            ),
+            const SizedBox(width: 6),
+          ],
+        ),
+        body: SafeArea(
+          child: _step == 0
+              ? _buildSubjectCards()
+              : _step == 1
+              ? _buildChapterStep()
+              : _buildQuestionStep(),
+        ),
       ),
     );
   }
@@ -361,22 +455,58 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
               ),
               itemBuilder: (_, i) {
                 final subject = entry.value[i];
+                final bgColor = Theme.of(context).colorScheme.surfaceContainer;
+                final isDarkBg =
+                    ThemeData.estimateBrightnessForColor(bgColor) ==
+                    Brightness.dark;
+                final titleColor = isDarkBg ? Colors.white : Colors.black87;
+                final metaColor = isDarkBg
+                    ? Colors.white.withOpacity(.82)
+                    : Colors.black87.withOpacity(.72);
+                final countsFuture = _subjectCountsFutureFor(
+                  stream: entry.key,
+                  subject: subject,
+                );
                 return InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () => _selectCard(stream: entry.key, subject: subject),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                      color: bgColor,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      subject.toUpperCase(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
+                    child: FutureBuilder<Map<String, int>>(
+                      future: countsFuture,
+                      builder: (context, snap) {
+                        final setCount = snap.data?['setCount'] ?? 0;
+                        final questionCount = snap.data?['questionCount'] ?? 0;
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              subject.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: titleColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$setCount sets • $questionCount questions',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: metaColor,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 );
@@ -387,6 +517,70 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
         );
       }).toList(),
     );
+  }
+
+  Future<Map<String, int>> _subjectCountsFutureFor({
+    required String stream,
+    required String subject,
+  }) {
+    final docId = _cardDocId(stream, subject);
+    final local = _subjectCountsLocal[docId];
+    if (local != null) {
+      return Future.value(local);
+    }
+    return _subjectCountsFutures.putIfAbsent(
+      docId,
+      () => _resolveSubjectCounts(docId),
+    );
+  }
+
+  Future<Map<String, int>> _resolveSubjectCounts(String cardDocId) async {
+    final cardRef = FirebaseFirestore.instance.collection('set_cards').doc(cardDocId);
+    final cardSnap = await cardRef.get();
+    final cardData = cardSnap.data();
+    final existingSetCount = (cardData?['setCount'] as num?)?.toInt();
+    final existingQuestionCount = (cardData?['questionCount'] as num?)?.toInt();
+    if (existingSetCount != null && existingQuestionCount != null) {
+      _setSubjectCountsLocal(cardDocId, existingSetCount, existingQuestionCount);
+      return {
+        'setCount': existingSetCount,
+        'questionCount': existingQuestionCount,
+      };
+    }
+
+    final chaptersSnap = await cardRef.collection('chapters').get();
+    int totalSets = 0;
+    int totalQuestions = 0;
+
+    for (final chapterDoc in chaptersSnap.docs) {
+      final chapterData = chapterDoc.data();
+      int setCount = (chapterData['setCount'] as num?)?.toInt() ?? 0;
+      int questionCount = (chapterData['questionCount'] as num?)?.toInt() ?? 0;
+
+      if (setCount == 0 && questionCount == 0) {
+        final setsSnap = await chapterDoc.reference.collection('sets').get();
+        setCount = setsSnap.docs.length;
+        questionCount = 0;
+        for (final setDoc in setsSnap.docs) {
+          questionCount += (setDoc.data()['questionCount'] as num?)?.toInt() ?? 0;
+        }
+      }
+
+      totalSets += setCount;
+      totalQuestions += questionCount;
+    }
+
+    await cardRef.set({
+      'setCount': totalSets,
+      'questionCount': totalQuestions,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    _setSubjectCountsLocal(cardDocId, totalSets, totalQuestions);
+
+    return {
+      'setCount': totalSets,
+      'questionCount': totalQuestions,
+    };
   }
 
   Widget _buildChapterStep() {
@@ -481,22 +675,12 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
         if (_saving)
           const Center(child: CircularProgressIndicator())
         else
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => setState(() => _step = 0),
-                  child: const Text('Back'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _continueToQuestions,
-                  child: const Text('Next'),
-                ),
-              ),
-            ],
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _continueToQuestions,
+              child: const Text('Next'),
+            ),
           ),
       ],
     );
@@ -626,22 +810,12 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
         if (_saving)
           const Center(child: CircularProgressIndicator())
         else
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => setState(() => _step = 1),
-                  child: const Text('Back'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _publishSet,
-                  child: Text('Publish Set $_nextSetNumber'),
-                ),
-              ),
-            ],
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _publishSet,
+              child: Text('Publish Set $_nextSetNumber'),
+            ),
           ),
       ],
     );
