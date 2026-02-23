@@ -109,7 +109,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => ActivityEditScreen(item: item),
+                                    builder: (_) => _ActivityEditScreen(item: item),
                                   ),
                                 );
                                 if (mounted) {
@@ -334,16 +334,16 @@ class _ActivityItem {
   String get path => ref.path;
 }
 
-class ActivityEditScreen extends StatefulWidget {
-  const ActivityEditScreen({super.key, required this.item});
+class _ActivityEditScreen extends StatefulWidget {
+  const _ActivityEditScreen({required this.item});
 
   final _ActivityItem item;
 
   @override
-  State<ActivityEditScreen> createState() => _ActivityEditScreenState();
+  State<_ActivityEditScreen> createState() => _ActivityEditScreenState();
 }
 
-class _ActivityEditScreenState extends State<ActivityEditScreen> {
+class _ActivityEditScreenState extends State<_ActivityEditScreen> {
   static const List<String> _streams = <String>[
     'Class 9-10th',
     'Class 11-12th',
@@ -892,8 +892,17 @@ class _ActivityEditScreenState extends State<ActivityEditScreen> {
         await widget.item.ref.delete();
       } else {
         final qSnap = await widget.item.ref.collection('questions').get();
+        final deletedQuestions = qSnap.docs.length;
         for (final qDoc in qSnap.docs) {
           await qDoc.reference.delete();
+        }
+        final chapterRef = widget.item.ref.parent.parent;
+        if (chapterRef != null) {
+          await chapterRef.set({
+            'setCount': FieldValue.increment(-1),
+            'questionCount': FieldValue.increment(-deletedQuestions),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
         }
         await widget.item.ref.delete();
       }
