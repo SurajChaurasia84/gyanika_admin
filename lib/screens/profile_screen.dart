@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../auth/login_screen.dart';
 import '../services/local_cache_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -102,18 +103,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _DetailTile(label: 'Email', value: email.isEmpty ? '-' : email),
                     _DetailTile(label: 'Role', value: role),
                     _DetailTile(label: 'Active', value: active),
+                    const SizedBox(height: 8),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: ListTile(
+                        onTap: _confirmLogout,
+                        title: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.logout, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text(
+                              'Logout',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                        dense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Admin from $adminFrom',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Text(
-                'Admin from $adminFrom',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 13,
                 ),
               ),
             ),
@@ -172,6 +190,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _error = 'Showing cached profile (sync failed)';
       });
     }
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true) return;
+
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   Map<String, dynamic> _normalizeAdminData(Map<String, dynamic> data) {
