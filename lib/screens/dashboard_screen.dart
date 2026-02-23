@@ -3,9 +3,8 @@ import 'package:iconsax/iconsax.dart';
 
 import 'add_courses.dart';
 import 'create_sets.dart';
-import 'manage_streams.dart';
-import 'users_screen.dart';
-import 'settings_screen.dart';
+import 'profile_screen.dart';
+import 'activity_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -50,8 +49,8 @@ class DashboardScreen extends StatelessWidget {
             ),
             _DashboardTile(
               title: 'Create Sets',
-              icon: Icons.layers_outlined,
-              color: Colors.deepOrange,
+              icon: Iconsax.layer,
+              color: Colors.green,
               onTap: () {
                 Navigator.push(
                   context,
@@ -73,8 +72,8 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
             _DashboardTile(
-              title: 'Manage Streams',
-              icon: Iconsax.category,
+              title: 'Activity',
+              icon: Iconsax.chart,
               color: Colors.orange,
               onTap: () {
                 Navigator.push(
@@ -82,7 +81,7 @@ class DashboardScreen extends StatelessWidget {
                   PageRouteBuilder(
                     transitionDuration: const Duration(milliseconds: 250),
                     pageBuilder: (_, _, _) =>
-                        const ManageStreamsScreen(),
+                        const ActivityScreen(),
                     transitionsBuilder: (_, animation, _, child) {
                       return FadeTransition(
                         opacity: CurvedAnimation(
@@ -97,32 +96,8 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
             _DashboardTile(
-              title: 'Users',
-              icon: Iconsax.profile_2user,
-              color: Colors.green,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 250),
-                    pageBuilder: (_, _, _) =>
-                        const UsersScreen(),
-                    transitionsBuilder: (_, animation, _, child) {
-                      return FadeTransition(
-                        opacity: CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeInOut,
-                        ),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            _DashboardTile(
-              title: 'Settings',
-              icon: Iconsax.setting,
+              title: 'My Profile',
+              icon: Iconsax.user,
               color: Colors.grey,
               onTap: () {
                 Navigator.push(
@@ -130,7 +105,7 @@ class DashboardScreen extends StatelessWidget {
                   PageRouteBuilder(
                     transitionDuration: const Duration(milliseconds: 250),
                     pageBuilder: (_, _, _) =>
-                        const SettingsScreen(),
+                        const ProfileScreen(),
                     transitionsBuilder: (_, animation, _, child) {
                       return FadeTransition(
                         opacity: CurvedAnimation(
