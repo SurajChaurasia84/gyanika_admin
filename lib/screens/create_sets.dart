@@ -264,6 +264,7 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
         'chapterEn': _selectedChapterEn ?? '',
         'chapterHi': _selectedChapterHi ?? '',
         'questionCount': _questions.length,
+        'published': true,
         'createdBy': FirebaseAuth.instance.currentUser?.uid,
         'createdAt': nowTs,
         'updatedAt': nowTs,
