@@ -73,6 +73,7 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
   String? _selectedChapterId;
   String? _selectedChapterEn;
   String? _selectedChapterHi;
+  String? _selectedSetLanguage;
 
   static const int _minQuestions = 4;
 
@@ -165,6 +166,7 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
       _selectedChapterId = null;
       _selectedChapterEn = null;
       _selectedChapterHi = null;
+      _selectedSetLanguage = null;
       _chapterEnCtrl.clear();
       _chapterHiCtrl.clear();
       _step = 1;
@@ -222,6 +224,7 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
       _selectedChapterId = chapterDoc.id;
       _selectedChapterEn = (data['chapterEn'] ?? '').toString();
       _selectedChapterHi = (data['chapterHi'] ?? '').toString();
+      _selectedSetLanguage = null;
       _chapterEnCtrl.clear();
       _chapterHiCtrl.clear();
     });
@@ -315,6 +318,12 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
     final subject = _selectedSubject;
     final chapterId = _selectedChapterId;
     if (stream == null || subject == null || chapterId == null) return;
+    if (_selectedSetLanguage == null || _selectedSetLanguage!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select set language')),
+      );
+      return;
+    }
 
     setState(() => _saving = true);
     try {
@@ -327,6 +336,7 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
         'setNumber': _nextSetNumber,
         'stream': stream,
         'subject': subject,
+        'language': _selectedSetLanguage,
         'chapterEn': _selectedChapterEn ?? '',
         'chapterHi': _selectedChapterHi ?? '',
         'questionCount': _questions.length,
@@ -373,6 +383,7 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
       );
       setState(() {
         _questions.clear();
+        _selectedSetLanguage = null;
       });
       await _loadNextSetNumber();
     } catch (e) {
@@ -698,6 +709,38 @@ class _CreateSetsScreenState extends State<CreateSetsScreen> {
         Text(
           'Chapter: ${_selectedChapterEn ?? ''}${(_selectedChapterHi ?? '').trim().isNotEmpty ? ' / ${_selectedChapterHi!}' : ''}',
           style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Text(
+              'Language',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+            ),
+            const Spacer(),
+            SizedBox(
+              width: 90,
+              child: DropdownButtonFormField<String>(
+                value: _selectedSetLanguage,
+                hint: const Text('Select'),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 10,
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'English', child: Text('English')),
+                  DropdownMenuItem(value: 'Hindi', child: Text('Hindi')),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedSetLanguage = value);
+                },
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 6),
         Text(
